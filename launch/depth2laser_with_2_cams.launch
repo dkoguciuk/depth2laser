@@ -1,0 +1,160 @@
+<launch>
+
+  <!-- PARAMS -->
+  <arg name="module_name" 			default="depth2laser"	/>
+  <arg name="suffix_left"			default="_left"		/>
+  <arg name="suffix_right"			default="_right"	/>
+
+  <arg name="camera_left" 			default="camera$(arg suffix_left)"	/>
+  <arg name="camera_left_id" 			default="3@0"		/>
+  <arg name="camera_right" 			default="camera$(arg suffix_right)"	/>
+  <arg name="camera_right_id" 			default="2@0"		/>
+
+  <arg name="camera_left_rgb_frame_id"   	default="$(arg camera_left)_rgb_optical_frame" />
+  <arg name="camera_left_depth_frame_id" 	default="$(arg camera_left)_depth_optical_frame" />
+  <arg name="rgb_camera_left_info_url" 		default="" />
+  <arg name="depth_camera_left_info_url"	default="" />
+  <arg name="camera_right_rgb_frame_id"   	default="$(arg camera_right)_rgb_optical_frame" />
+  <arg name="camera_right_depth_frame_id" 	default="$(arg camera_right)_depth_optical_frame" />
+  <arg name="rgb_camera_right_info_url"		default="" />
+  <arg name="depth_camera_right_info_url"	default="" />
+
+  <arg name="depth_registration" 		default="true" />
+  <arg name="color_depth_synchronization"	default="false" />
+  <arg name="auto_exposure"                 	default="true" />
+  <arg name="auto_white_balance"            	default="true" />
+  <arg name="rgb"              			default="rgb" />
+  <arg name="ir"               			default="ir" />01
+  <arg name="depth"            			default="depth" />
+  <arg name="depth_registered"			default="depth_registered" />
+  <arg name="load_driver" 			default="true" />
+  <arg name="publish_tf" 			default="true" />
+  <arg name="rgb_processing"                  	default="true"  />
+  <arg name="debayer_processing"              	default="false" />
+  <arg name="ir_processing"                   	default="false" />
+  <arg name="depth_processing"                	default="true" />
+  <arg name="depth_registered_processing"     	default="true" />
+  <arg name="disparity_processing"            	default="false" />
+  <arg name="disparity_registered_processing" 	default="false" />
+  <arg name="hw_registered_processing"        	default="true" if="$(arg depth_registration)" />
+  <arg name="sw_registered_processing"        	default="false" if="$(arg depth_registration)" />
+  <arg name="hw_registered_processing"        	default="false" unless="$(arg depth_registration)" />
+  <arg name="sw_registered_processing"        	default="true" unless="$(arg depth_registration)" />
+  <arg name="respawn" 				default="false" />
+  <arg name="num_worker_threads" 		default="4" />
+
+  <!-- Push down all topics/nodelets into "module_name" namespace -->
+  <group ns="$(arg module_name)">
+  
+    <!-- Start nodelet manager -->
+    <arg name="manager" value="$(arg module_name)_nodelet_manager"/>
+    <arg name="debug" default="false"/> 						<!-- Run manager in GDB? -->
+    <include file="$(find rgbd_launch)/launch/includes/manager.launch.xml">
+        <arg name="name" value="$(arg manager)" />
+        <arg name="debug" value="$(arg debug)" />
+        <arg name="num_worker_threads"  value="$(arg num_worker_threads)" />
+    </include>
+
+    <include if="$(arg load_driver)" file="$(find depth2laser)/launch/includes/device.launch">
+      <arg name="depth2laser_suffix"		  value="$(arg suffix_left)" />
+      <arg name="manager"                         value="$(arg manager)" />
+      <arg name="device_id"                       value="$(arg camera_left_id)" />
+      <arg name="rgb_frame_id"                    value="$(arg camera_left_rgb_frame_id)" />
+      <arg name="depth_frame_id"                  value="$(arg camera_left_depth_frame_id)" />
+      <arg name="rgb_camera_info_url"             value="$(arg rgb_camera_left_info_url)" />
+      <arg name="depth_camera_info_url"           value="$(arg depth_camera_left_info_url)" />
+      <arg name="rgb"                             value="$(arg rgb)$(arg suffix_left)" />
+      <arg name="ir"                              value="$(arg ir)$(arg suffix_left)" />
+      <arg name="depth"                           value="$(arg depth)$(arg suffix_left)" />
+      <arg name="depth_registered"                value="$(arg depth_registered)_left" />
+      <arg name="respawn"                         value="$(arg respawn)" />
+      <arg name="depth_registration"              value="$(arg depth_registration)" />
+      <arg name="color_depth_synchronization"     value="$(arg color_depth_synchronization)" />
+      <arg name="auto_exposure"                   value="$(arg auto_exposure)" />
+      <arg name="auto_white_balance"              value="$(arg auto_white_balance)" />
+    </include>
+    <node pkg="nodelet" type="nodelet" name="driver_nodelet$(arg suffix_left)" args="load easydepthcalib/driver_nodelet $(arg module_name)_nodelet_manager" output="screen">
+       <param name="topic_sub"			value="/$(arg module_name)/$(arg depth)$(arg suffix_left)"/>
+       <param name="topic_pub"			value="/$(arg module_name)/$(arg depth)$(arg suffix_left)_calib"/>
+       <param name="calib_lut"			value="$(find depth2laser)/calib/camera$(arg suffix_left)_intrinsic_calib"/>
+    </node>
+    <include file="$(find depth2laser)/launch/includes/processing.launch">
+      <arg name="depth2laser_suffix"		  value="$(arg suffix_left)" />
+      <arg name="manager"                         value="$(arg manager)" />
+      <arg name="rgb"                             value="$(arg rgb)$(arg suffix_left)" />
+      <arg name="ir"                              value="$(arg ir)$(arg suffix_left)" />
+      <arg name="depth"                           value="$(arg depth)$(arg suffix_left)_calib" />
+      <arg name="depth_registered"                value="$(arg depth_registered)$(arg suffix_left)" />
+      <arg name="respawn"                         value="$(arg respawn)" />
+      <arg name="rgb_processing"                  value="$(arg rgb_processing)" />
+      <arg name="debayer_processing"              value="$(arg debayer_processing)" />
+      <arg name="ir_processing"                   value="$(arg ir_processing)" />
+      <arg name="depth_processing"                value="$(arg depth_processing)" />
+      <arg name="depth_registered_processing"     value="$(arg depth_registered_processing)" />
+      <arg name="disparity_processing"            value="$(arg disparity_processing)" />
+      <arg name="disparity_registered_processing" value="$(arg disparity_registered_processing)" />
+      <arg name="hw_registered_processing"        value="$(arg hw_registered_processing)" />
+      <arg name="sw_registered_processing"        value="$(arg sw_registered_processing)" />
+    </include>
+
+    <include if="$(arg load_driver)" file="$(find depth2laser)/launch/includes/device.launch">
+      <arg name="depth2laser_suffix"		  value="$(arg suffix_right)" />
+      <arg name="manager"                         value="$(arg manager)" />
+      <arg name="device_id"                       value="$(arg camera_right_id)" />
+      <arg name="rgb_frame_id"                    value="$(arg camera_right_rgb_frame_id)" />
+      <arg name="depth_frame_id"                  value="$(arg camera_right_depth_frame_id)" />
+      <arg name="rgb_camera_info_url"             value="$(arg rgb_camera_right_info_url)" />
+      <arg name="depth_camera_info_url"           value="$(arg depth_camera_right_info_url)" />
+      <arg name="rgb"                             value="$(arg rgb)$(arg suffix_right)" />
+      <arg name="ir"                              value="$(arg ir)$(arg suffix_right)" />
+      <arg name="depth"                           value="$(arg depth)$(arg suffix_right)" />
+      <arg name="depth_registered"                value="$(arg depth_registered)$(arg suffix_right)" />
+      <arg name="respawn"                         value="$(arg respawn)" />
+      <arg name="depth_registration"              value="$(arg depth_registration)" />
+      <arg name="color_depth_synchronization"     value="$(arg color_depth_synchronization)" />
+      <arg name="auto_exposure"                   value="$(arg auto_exposure)" />
+      <arg name="auto_white_balance"              value="$(arg auto_white_balance)" />
+    </include>
+    <node pkg="nodelet" type="nodelet" name="driver_nodelet$(arg suffix_right)" args="load easydepthcalib/driver_nodelet $(arg module_name)_nodelet_manager" output="screen">
+       <param name="topic_sub"			value="/$(arg module_name)/$(arg depth)$(arg suffix_right)"/>
+       <param name="topic_pub"			value="/$(arg module_name)/$(arg depth)$(arg suffix_right)_calib"/>
+       <param name="calib_lut"			value="$(find depth2laser)/calib/camera$(arg suffix_right)_intrinsic_calib"/>
+    </node>
+    <include file="$(find depth2laser)/launch/includes/processing.launch">
+      <arg name="depth2laser_suffix"		  value="$(arg suffix_right)" />
+      <arg name="manager"                         value="$(arg manager)" />
+      <arg name="rgb"                             value="$(arg rgb)$(arg suffix_right)" />
+      <arg name="ir"                              value="$(arg ir)$(arg suffix_right)" />
+      <arg name="depth"                           value="$(arg depth)$(arg suffix_right)_calib" />
+      <arg name="depth_registered"                value="$(arg depth_registered)$(arg suffix_right)" />
+      <arg name="respawn"                         value="$(arg respawn)" />
+      <arg name="rgb_processing"                  value="$(arg rgb_processing)" />
+      <arg name="debayer_processing"              value="$(arg debayer_processing)" />
+      <arg name="ir_processing"                   value="$(arg ir_processing)" />
+      <arg name="depth_processing"                value="$(arg depth_processing)" />
+      <arg name="depth_registered_processing"     value="$(arg depth_registered_processing)" />
+      <arg name="disparity_processing"            value="$(arg disparity_processing)" />
+      <arg name="disparity_registered_processing" value="$(arg disparity_registered_processing)" />
+      <arg name="hw_registered_processing"        value="$(arg hw_registered_processing)" />
+      <arg name="sw_registered_processing"        value="$(arg sw_registered_processing)" />
+    </include>
+
+    <node pkg="nodelet" type="nodelet" name="Depth2Laser" args="load depth2laser/depth2laser_nodelet $(arg module_name)_nodelet_manager" output="screen">
+       <param name="base_link_frame"		value="/batman/base_link"/>
+       <param name="camera_left_link_frame"	value="$(arg camera_left)_link"/>
+       <param name="camera_right_link_frame"	value="$(arg camera_right)_link"/>
+       <param name="camera_left_topic"		value="/$(arg module_name)/$(arg depth)$(arg suffix_left)_calib/points"/>
+       <param name="camera_right_topic"		value="/$(arg module_name)/$(arg depth)$(arg suffix_right)_calib/points"/>
+       <param name="output_laser_scan_topic"	value="/batman/depth2laser/scan"/>
+    </node>
+
+  </group>
+
+  <include if="$(arg publish_tf)" file="$(find rgbd_launch)/launch/kinect_frames.launch">
+    <arg name="camera" value="$(arg camera_left)" />
+  </include>
+  <include if="$(arg publish_tf)" file="$(find rgbd_launch)/launch/kinect_frames.launch">
+    <arg name="camera" value="$(arg camera_right)" />
+  </include>
+
+</launch>

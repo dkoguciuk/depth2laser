@@ -1,0 +1,11 @@
+<library path="lib/libdepth2laser_nodelet">
+
+    <class name="depth2laser/depth2laser_nodelet"
+           type="depth2laser::Depth2LaserNodelet"
+           base_class_type="nodelet::Nodelet">
+        <description>
+            Online depth2laser nodelet.
+        </description>
+    </class>
+
+</library>
